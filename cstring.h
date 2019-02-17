@@ -4,52 +4,63 @@
 
 #include <array>
 
-template <std::size_t LengthA, std::size_t LengthB>
-class constexpr_string {
+template <std::size_t N, typename ... Literal>
+class cstring {
   public:
-    static constexpr std::size_t kSize = LengthA + LengthB;
+    static constexpr std::size_t kSize = N;
 
     /// Constructor
-    constexpr constexpr_string(const StringLiteral<LengthA> &a,
-                               const StringLiteral<LengthB> &b) {
-
-        constexpr auto copy = [](auto &buffer, const auto &other, const std::size_t begin, const std::size_t end) {
-            for (std::size_t ii = begin; ii < begin + end; ii++) {
-                buffer[ii] = other[ii - begin];
+    constexpr cstring(Literal ... literals) {
+        constexpr auto copy = [](auto &buffer, const auto &other, auto &index) {
+            for (std::size_t ii = 0; ii < other.size(); ii++) {
+                buffer[index++] = other[ii];
             }
         };
 
-        // Copy over A
-        copy(buffer_, a, 0, LengthA);
-
-        // Copy over B
-        copy(buffer_, b, LengthA, LengthB);
+        (copy(buffer_, literals, index_), ...);
 
         // Null terminate
-        buffer_[LengthA + LengthB] = '\0';
+        buffer_[kSize] = '\0';
     }
 
     constexpr const char *value() const {
         return buffer_.data();
     }
 
-  private:
-    std::array<char, kSize + 1> buffer_{};
+    constexpr std::size_t size() const {
+        return kSize;
+    }
+
+    std::size_t index_ = 0;
+    std::array<char, N + 1> buffer_{};
 };
 
-template <std::size_t LengthA, std::size_t LengthB>
-constexpr constexpr_string<LengthA, LengthB> operator+(const StringLiteral<LengthA> &a,
-                                                       const StringLiteral<LengthB> &b) {
-    return constexpr_string<LengthA, LengthB>(a, b);
+template <typename FirstType>
+constexpr std::size_t length(FirstType first) {
+    return first;
 }
 
-// void test() {
-//     constexpr StringLiteral h = "hello ";
-//     constexpr StringLiteral w =  "world";
+template <typename FirstType, typename ... Literal>
+constexpr std::size_t length(FirstType first, Literal ... literals) {
+    return first + length(literals...);
+}
 
-//     constexpr constexpr_string kString3(h, w);
-//     constexpr constexpr_string kString4 = h + w;
+template <std::size_t ... sizes>
+struct SumTrait {
+    static constexpr std::size_t value = length(sizes...);
+    constexpr SumTrait() = default;
+};
 
-//     std::cout << kString3.kSize << " : " << kString3.value() << std::endl;
-//     std::cout << kString4.kSize << " : " << kString4.value() << std::endl;
-// }
+template <std::size_t ... sizes>
+constexpr std::size_t kSum = SumTrait<sizes...>::value;
+
+template <typename ... Literal>
+constexpr auto make_cstring(Literal && ... literals) {
+    constexpr std::size_t n = kSum<literals...>;
+    return cstring<n, Literal...>(literals...);
+}
+
+template <std::size_t LengthA, std::size_t LengthB>
+constexpr auto make_cstring(const char (&a)[LengthA], const char (&b)[LengthB]) {
+    return cstring<LengthA + LengthB, decltype(StringLiteral{a}), decltype(StringLiteral{b})>(StringLiteral{a}, StringLiteral{b});
+}
