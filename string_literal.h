@@ -21,10 +21,6 @@ class StringLiteral : public LiteralBase {
         return Size;
     }
 
-    constexpr operator std::size_t() const {
-        return Size;
-    }
-
   private:
     const char (&buffer_)[NPlus1];
 };
