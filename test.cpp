@@ -1,4 +1,4 @@
-#include "cstring.h"
+#include "cexpr_string.h"
 
 #include <string.h>
 
@@ -6,6 +6,8 @@
 #include <iostream>
 
 int main() {
+    using namespace cexpr_string;
+
     {
         constexpr auto concatenated = concatenate("hello", "this", "world", "is", "great");
         std::cout << concatenated.value() << std::endl;
